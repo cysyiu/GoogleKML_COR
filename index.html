@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Google My Maps with OpenLayers</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.5.0/ol.css">
+    <style>
+        #map {
+            width: 100%;
+            height: 400px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script src="https://cdn.jsdelivr.net/npm/ol@v10.5.0/dist/ol.js"></script>
+    <script>
+        // Create the map with an OpenStreetMap base layer
+        var map = new ol.Map({
+            target: 'map',
+            layers: [
+                new ol.layer.Tile({
+                    source: new ol.source.OSM()
+                })
+            ],
+            view: new ol.View({
+                center: [0, 0],
+                zoom: 2
+            })
+        });
+
+        // Function to load KML with proxy for external icons
+        async function loadKMLWithProxy() {
+            const kmlUrl = 'your-map.kml'; // Replace with your KML file path
+            const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+
+            // Fetch the KML file from the same domain
+            const response = await fetch(kmlUrl);
+            const kmlText = await response.text();
+
+            // Parse the KML as XML
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(kmlText, 'text/xml');
+
+            // Find all <href> elements in <Icon> tags
+            const hrefElements = xmlDoc.querySelectorAll('Icon href');
+
+            // Modify each external URL to use the proxy
+            hrefElements.forEach(href => {
+                const originalUrl = href.textContent;
+                if (originalUrl.startsWith('http')) {
+                    href.textContent = proxyUrl + originalUrl;
+                }
+            });
+
+            // Serialize the modified XML back to a string
+            const serializer = new XMLSerializer();
+            const modifiedKmlText = serializer.serializeToString(xmlDoc);
+
+            // Parse the modified KML with OpenLayers
+            const format = new ol.format.KML({ extractStyles: true });
+            const features = format.readFeatures(modifiedKmlText);
+
+            // Create a vector source and layer
+            const vectorSource = new ol.source.Vector({ features });
+            const vectorLayer = new ol.layer.Vector({ source: vectorSource });
+
+            // Add the vector layer to the map
+            map.addLayer(vectorLayer);
+        }
+
+        // Call the function to load the KML
+        loadKMLWithProxy();
+    </script>
+</body>
+</html>
